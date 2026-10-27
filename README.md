@@ -33,10 +33,10 @@ If something still doesn't parse as expected, please
 [open an issue](https://github.com/Proffalken/ha-metoffice-weather-warnings/issues) with a
 redacted sample response.
 
-**Known gap:** HACS's brand-assets check currently fails because this integration hasn't
-been submitted to [home-assistant/brands](https://github.com/home-assistant/brands) yet
-(needs an icon/logo). That's expected for a new integration and doesn't block installing
-it as a HACS custom repository — only default-store listing.
+The integration ships its own icon in `custom_components/metoffice_warnings/brand/`
+(supported by Home Assistant 2026.3 and later). The icon is original artwork. Its
+SVG source is in `assets/icon.svg` and it's released under this repository's licence.
+It is not affiliated with or endorsed by the Met Office.
 
 ## What you get
 
