@@ -45,3 +45,5 @@ def test_warning_as_dict_is_jsonable(issued_active: dict) -> None:
     assert data["level"] == "amber"
     assert data["valid_from"] == "2026-08-26T02:00:00+00:00"
     assert data["areas"] == ["London & South East England"]
+    # Every warning in the list carries its further details (issue #3).
+    assert data["further_details"] == warning.further_details

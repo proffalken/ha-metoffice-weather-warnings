@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -24,6 +24,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL_MINUTES,
     DOMAIN,
     MIN_SCAN_INTERVAL_MINUTES,
+    NSWWS_REGIONS,
 )
 from .models import Warning
 
@@ -46,9 +47,19 @@ async def _async_fetch_warnings(hass, api_key: str, base_url: str) -> list[Warni
     return await client.async_get_active_warnings()
 
 
-def _region_choices(warnings: list[Warning]) -> dict[str, str]:
-    names = sorted({name for w in warnings for name in w.region_names if name})
-    return {name: name for name in names}
+def _region_choices(
+    warnings: list[Warning], extra: Iterable[str] = ()
+) -> dict[str, str]:
+    """Fixed NSWWS regions, plus any live or previously saved names.
+
+    Live and saved names are merged in so that a renamed or newly added region
+    is never hidden, and an existing selection always stays selectable.
+    """
+    names = set(NSWWS_REGIONS)
+    names.update(name for w in warnings for name in w.region_names)
+    names.update(extra)
+    names -= {"", AREA_ALL}
+    return {name: name for name in sorted(names)}
 
 
 def _areas_schema(region_choices: dict[str, str]) -> vol.Schema:
@@ -95,17 +106,6 @@ class MetOfficeWarningsConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
             else:
                 self._region_choices = _region_choices(warnings)
-                if not self._region_choices:
-                    # No warnings currently active anywhere - nothing to build an
-                    # area picker from, so default to monitoring the whole UK.
-                    return self.async_create_entry(
-                        title="Met Office Warnings",
-                        data={
-                            CONF_API_KEY: self._api_key,
-                            CONF_BASE_URL: self._base_url,
-                            CONF_AREAS: [AREA_ALL],
-                        },
-                    )
                 return await self.async_step_areas()
 
         return self.async_show_form(
@@ -209,13 +209,13 @@ class MetOfficeWarningsOptionsFlow(OptionsFlow):
                 self.config_entry.data[CONF_API_KEY],
                 self.config_entry.data[CONF_BASE_URL],
             )
-            region_choices = _region_choices(warnings)
         except (NSWWSAuthError, NSWWSConnectionError):
-            region_choices = {}
+            warnings = []
 
         current_areas = self.config_entry.options.get(
             CONF_AREAS, self.config_entry.data.get(CONF_AREAS, [AREA_ALL])
         )
+        region_choices = _region_choices(warnings, extra=current_areas)
         current_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL_MINUTES, DEFAULT_SCAN_INTERVAL_MINUTES
         )

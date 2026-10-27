@@ -8,5 +8,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Proffalken/ha-metoffice-weather-warnings/issues",
   "requirements": [],
-  "version": "0.3.0"
+  "version": "0.4.0"
 }

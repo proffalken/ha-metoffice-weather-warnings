@@ -45,8 +45,8 @@ entities:
 
 - `sensor.<name>_warning_level` — the highest-severity active warning matching your
   selected area or Home location: `none` / `yellow` / `amber` / `red`. Attributes include the full list
-  of active warnings (headline, weather type, what to expect, what to do, valid
-  from/to, likelihood, impact, affected areas) — use this one for templating.
+  of active warnings (headline, weather type, what to expect, what to do, further
+  details, valid from/to, likelihood, impact, affected areas) — use this one for templating.
 - `binary_sensor.<name>_warning_active` — on when any warning matches your filter, for
   simple automation triggers. Attributes summarise the most severe active warning.
 - `sensor.<name>_warning_headline` / `_warning_areas` / `_warning_valid_from` /
@@ -59,13 +59,17 @@ entities:
 
 ## Requirements
 
-You need your own NSWWS Public API access — this is a *different* product from the
-Met Office DataHub weather-forecast API and requires a separate signup:
+You need your own NSWWS API key. The warnings API is now published on the
+[Met Office Weather DataHub](https://datahub.metoffice.gov.uk/docs/g/category/warnings/overview):
 
-1. Fill in the request form linked from the
-   [NSWWS Public API docs](https://metoffice.github.io/nswws-public-api/).
-2. Once approved, you'll receive an API key (the base URL is the same fixed public
-   host for everyone — see the Status section above).
+1. Sign up for (or log in to) Weather DataHub and subscribe to the **Warnings**
+   product.
+2. Copy the API key from your subscription — keys issued this way work with this
+   integration. Keys obtained through the older request form linked from the
+   [NSWWS Public API docs](https://metoffice.github.io/nswws-public-api/) also work.
+
+The base URL is the same fixed public host for everyone (see the Status section
+above), so you only need the key.
 
 ## Installation
 
@@ -85,11 +89,9 @@ Settings → Devices & Services → Add Integration → **Met Office Warnings**.
 
 1. Enter your NSWWS API key (the base URL is pre-filled — only change it if Met
    Office tells you to).
-2. If any warnings are currently active anywhere in the UK, you'll be offered a list
-   of regions to filter to — leave **Monitor all UK regions** checked to track
-   everything nationwide, or pick specific regions. If nothing is active right now,
-   setup completes immediately monitoring the whole UK; refine the area filter later
-   from the integration's **Configure** options.
+2. Choose the regions to monitor — leave **Monitor all UK regions** checked to track
+   everything nationwide, or pick one or more of the 16 Met Office warning regions.
+   All regions are always listed, whether or not they have a warning right now.
 
 Poll interval (default 10 minutes, minimum 5), region selection, and **Use Home
 location** can be changed afterwards via the integration's **Configure** options.
