@@ -51,6 +51,7 @@ class Warning:
             "headline": self.headline,
             "what_to_expect": self.what_to_expect,
             "what_should_i_do": self.what_should_i_do,
+            "further_details": self.further_details,
             "areas": self.region_names,
             "valid_from": self.valid_from.isoformat(),
             "valid_to": self.valid_to.isoformat(),

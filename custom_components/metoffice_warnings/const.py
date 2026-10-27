@@ -33,6 +33,28 @@ API_KEY_HEADER: Final = "apikey"
 
 AREA_ALL: Final = "all"
 
+# The 16 NSWWS warning regions, spelt as the API's `affectedAreas[].regionName`
+# and the Met Office warnings pages use them. Offered in the region picker so it
+# doesn't depend on which regions happen to have live warnings.
+NSWWS_REGIONS: Final = (
+    "Orkney & Shetland",
+    "Highlands & Eilean Siar",
+    "Grampian",
+    "Central, Tayside & Fife",
+    "Strathclyde",
+    "SW Scotland, Lothian Borders",
+    "Northern Ireland",
+    "Wales",
+    "North West England",
+    "North East England",
+    "Yorkshire & Humber",
+    "West Midlands",
+    "East Midlands",
+    "East of England",
+    "South West England",
+    "London & South East England",
+)
+
 WARNING_LEVEL_NONE: Final = "none"
 WARNING_LEVEL_YELLOW: Final = "yellow"
 WARNING_LEVEL_AMBER: Final = "amber"

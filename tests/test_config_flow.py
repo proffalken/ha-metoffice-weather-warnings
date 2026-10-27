@@ -15,6 +15,7 @@ from custom_components.metoffice_warnings.const import (
     CONF_SCAN_INTERVAL_MINUTES,
     CONF_USE_HOME_LOCATION,
     DOMAIN,
+    NSWWS_REGIONS,
 )
 from tests.nswws_helpers import (
     NSWWS_BASE_URL,
@@ -43,10 +44,63 @@ async def test_user_step_success_no_active_warnings(hass, issued_empty) -> None:
             {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
         )
 
-    # No live warnings to derive area choices from -> go straight to a completed entry.
+    # Regions come from a fixed list, so the picker is offered even when nothing
+    # is active anywhere (issue #4).
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "areas"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_MONITOR_ALL: True, CONF_AREAS: []},
+    )
+
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_API_KEY] == "test-key"
     assert result["data"][CONF_AREAS] == [AREA_ALL]
+
+
+def _multi_select_choices(schema, key) -> dict:
+    for marker, validator in schema.schema.items():
+        if marker == key:
+            return validator.options
+    raise AssertionError(f"{key} not in schema")
+
+
+async def test_area_picker_lists_all_regions_with_no_active_warnings(
+    hass, issued_empty
+) -> None:
+    result = await _start_user_step(hass)
+    with aioresponses() as mocked:
+        register_nswws(mocked, issued_empty)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
+        )
+
+    choices = _multi_select_choices(result["data_schema"], CONF_AREAS)
+    assert set(NSWWS_REGIONS) <= set(choices)
+    assert "West Midlands" in choices
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_MONITOR_ALL: False, CONF_AREAS: ["West Midlands"]},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_AREAS] == ["West Midlands"]
+
+
+def test_region_choices_merge_fixed_live_and_saved_names() -> None:
+    from types import SimpleNamespace
+
+    from custom_components.metoffice_warnings.config_flow import _region_choices
+
+    live = [SimpleNamespace(region_names=["Brand New Region", ""])]
+    choices = _region_choices(live, extra=["Old Saved Name", AREA_ALL])
+    assert set(NSWWS_REGIONS) <= set(choices)
+    assert "Brand New Region" in choices
+    assert "Old Saved Name" in choices
+    assert AREA_ALL not in choices
+    assert "" not in choices
 
 
 async def test_user_step_then_area_selection(hass, issued_active) -> None:
@@ -142,6 +196,9 @@ async def test_duplicate_entry_aborts(hass, issued_empty) -> None:
             result["flow_id"],
             {CONF_API_KEY: "dup-key", CONF_BASE_URL: BASE_URL},
         )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
+        )
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
     with aioresponses() as mocked:
@@ -162,6 +219,9 @@ async def test_options_flow_updates_scan_interval(hass, issued_empty) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {CONF_API_KEY: "opt-key", CONF_BASE_URL: BASE_URL},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
         )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
@@ -189,6 +249,9 @@ async def test_options_flow_interval_too_short(hass, issued_empty) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {CONF_API_KEY: "short-key", CONF_BASE_URL: BASE_URL},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
         )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
@@ -292,6 +355,9 @@ async def test_options_flow_fetch_failure_falls_back_to_empty_choices(
             result["flow_id"],
             {CONF_API_KEY: "fallback-key", CONF_BASE_URL: BASE_URL},
         )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
+        )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
 
@@ -301,6 +367,9 @@ async def test_options_flow_fetch_failure_falls_back_to_empty_choices(
 
     assert options_result["type"] is FlowResultType.FORM
     assert options_result["step_id"] == "init"
+    # Fixed regions are still offered when the live fetch fails.
+    choices = _multi_select_choices(options_result["data_schema"], CONF_AREAS)
+    assert set(NSWWS_REGIONS) <= set(choices)
 
 
 async def test_options_flow_saves_and_restores_home_location_checkbox(
@@ -309,9 +378,12 @@ async def test_options_flow_saves_and_restores_home_location_checkbox(
     with aioresponses() as mocked:
         register_nswws(mocked, issued_empty)
         result = await _start_user_step(hass)
-        await hass.config_entries.flow.async_configure(
+        result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {CONF_API_KEY: "location-opt-key", CONF_BASE_URL: BASE_URL},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
         )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
