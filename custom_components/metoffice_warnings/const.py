@@ -15,6 +15,7 @@ CONF_BASE_URL: Final = "base_url"
 DEFAULT_BASE_URL: Final = "https://data.hub.api.metoffice.gov.uk/nswws/v1.1"
 CONF_AREAS: Final = "areas"
 CONF_MONITOR_ALL: Final = "monitor_all"
+CONF_USE_HOME_LOCATION: Final = "use_home_location"
 CONF_SCAN_INTERVAL_MINUTES: Final = "scan_interval_minutes"
 
 DEFAULT_SCAN_INTERVAL_MINUTES: Final = 10

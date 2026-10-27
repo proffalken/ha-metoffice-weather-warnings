@@ -1,8 +1,9 @@
 name: Test
+# Run regression tests on the location-filter development branch.
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/home-location-warning-filter]
   pull_request:
 
 jobs:

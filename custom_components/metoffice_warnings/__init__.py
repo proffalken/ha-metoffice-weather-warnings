@@ -15,6 +15,7 @@ from .const import (
     CONF_AREAS,
     CONF_BASE_URL,
     CONF_SCAN_INTERVAL_MINUTES,
+    CONF_USE_HOME_LOCATION,
     DEFAULT_SCAN_INTERVAL_MINUTES,
 )
 from .coordinator import MetOfficeWarningsCoordinator
@@ -33,7 +34,8 @@ async def async_setup_entry(
         base_url=entry.data[CONF_BASE_URL],
         api_key=entry.data[CONF_API_KEY],
     )
-    areas = entry.data.get(CONF_AREAS, [AREA_ALL])
+    areas = entry.options.get(CONF_AREAS, entry.data.get(CONF_AREAS, [AREA_ALL]))
+    use_home_location = entry.options.get(CONF_USE_HOME_LOCATION, False)
     scan_minutes = entry.options.get(
         CONF_SCAN_INTERVAL_MINUTES, DEFAULT_SCAN_INTERVAL_MINUTES
     )
@@ -42,6 +44,7 @@ async def async_setup_entry(
         hass,
         client=client,
         areas=areas,
+        use_home_location=use_home_location,
         update_interval=timedelta(minutes=scan_minutes),
     )
     try:

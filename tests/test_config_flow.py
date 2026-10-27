@@ -13,6 +13,7 @@ from custom_components.metoffice_warnings.const import (
     CONF_BASE_URL,
     CONF_MONITOR_ALL,
     CONF_SCAN_INTERVAL_MINUTES,
+    CONF_USE_HOME_LOCATION,
     DOMAIN,
 )
 from tests.nswws_helpers import (
@@ -300,3 +301,41 @@ async def test_options_flow_fetch_failure_falls_back_to_empty_choices(
 
     assert options_result["type"] is FlowResultType.FORM
     assert options_result["step_id"] == "init"
+
+
+async def test_options_flow_saves_and_restores_home_location_checkbox(
+    hass, issued_empty
+) -> None:
+    with aioresponses() as mocked:
+        register_nswws(mocked, issued_empty)
+        result = await _start_user_step(hass)
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_API_KEY: "location-opt-key", CONF_BASE_URL: BASE_URL},
+        )
+
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    with aioresponses() as mocked:
+        register_nswws(mocked, issued_empty)
+        options_result = await hass.config_entries.options.async_init(entry.entry_id)
+        assert options_result["type"] is FlowResultType.FORM
+        options_result = await hass.config_entries.options.async_configure(
+            options_result["flow_id"],
+            {
+                CONF_SCAN_INTERVAL_MINUTES: 15,
+                CONF_MONITOR_ALL: True,
+                CONF_AREAS: [],
+                CONF_USE_HOME_LOCATION: True,
+            },
+        )
+
+    assert options_result["type"] is FlowResultType.CREATE_ENTRY
+    assert options_result["data"][CONF_USE_HOME_LOCATION] is True
+    assert options_result["data"][CONF_AREAS] == [AREA_ALL]
+
+    with aioresponses() as mocked:
+        register_nswws(mocked, issued_empty)
+        reopened = await hass.config_entries.options.async_init(entry.entry_id)
+    assert reopened["type"] is FlowResultType.FORM
+    defaults = reopened["data_schema"]({})
+    assert defaults[CONF_USE_HOME_LOCATION] is True
