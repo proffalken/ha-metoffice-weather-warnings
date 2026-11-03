@@ -1,17 +1,14 @@
 """Tests for the Met Office Warnings sensor platform."""
 
-from aioresponses import aioresponses
-
 from tests.nswws_helpers import register_nswws
 
 
 async def test_sensor_state_no_active_warnings(
-    hass, issued_empty, mock_config_entry
+    aioclient_mock, hass, issued_empty, mock_config_entry
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    register_nswws(aioclient_mock, issued_empty)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     state = hass.states.get("sensor.met_office_warnings_warning_level")
     assert state is not None
@@ -21,12 +18,11 @@ async def test_sensor_state_no_active_warnings(
 
 
 async def test_sensor_state_active_warnings(
-    hass, issued_active, mock_config_entry
+    aioclient_mock, hass, issued_active, mock_config_entry
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_active)
-        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    register_nswws(aioclient_mock, issued_active)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     state = hass.states.get("sensor.met_office_warnings_warning_level")
     assert state.state == "amber"
@@ -37,12 +33,11 @@ async def test_sensor_state_active_warnings(
 
 
 async def test_top_warning_detail_sensors_no_active_warnings(
-    hass, issued_empty, mock_config_entry
+    aioclient_mock, hass, issued_empty, mock_config_entry
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    register_nswws(aioclient_mock, issued_empty)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     for entity_id in (
         "sensor.met_office_warnings_warning_headline",
@@ -56,12 +51,11 @@ async def test_top_warning_detail_sensors_no_active_warnings(
 
 
 async def test_top_warning_detail_sensors_active_warnings(
-    hass, issued_active, mock_config_entry
+    aioclient_mock, hass, issued_active, mock_config_entry
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_active)
-        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    register_nswws(aioclient_mock, issued_active)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     headline_state = hass.states.get("sensor.met_office_warnings_warning_headline")
     assert headline_state.state == "Thunderstorms may cause disruption Tuesday"
