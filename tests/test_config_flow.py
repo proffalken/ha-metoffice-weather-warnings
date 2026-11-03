@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 
-from aioresponses import aioresponses
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResultType
 
@@ -15,6 +14,7 @@ from custom_components.metoffice_warnings.const import (
     CONF_SCAN_INTERVAL_MINUTES,
     CONF_USE_HOME_LOCATION,
     DOMAIN,
+    FEED_PATH,
     NSWWS_REGIONS,
 )
 from tests.nswws_helpers import (
@@ -32,17 +32,18 @@ async def _start_user_step(hass):
     )
 
 
-async def test_user_step_success_no_active_warnings(hass, issued_empty) -> None:
+async def test_user_step_success_no_active_warnings(
+    aioclient_mock, hass, issued_empty
+) -> None:
     result = await _start_user_step(hass)
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
+    )
 
     # Regions come from a fixed list, so the picker is offered even when nothing
     # is active anywhere (issue #4).
@@ -67,15 +68,14 @@ def _multi_select_choices(schema, key) -> dict:
 
 
 async def test_area_picker_lists_all_regions_with_no_active_warnings(
-    hass, issued_empty
+    aioclient_mock, hass, issued_empty
 ) -> None:
     result = await _start_user_step(hass)
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
+    )
 
     choices = _multi_select_choices(result["data_schema"], CONF_AREAS)
     assert set(NSWWS_REGIONS) <= set(choices)
@@ -103,15 +103,16 @@ def test_region_choices_merge_fixed_live_and_saved_names() -> None:
     assert "" not in choices
 
 
-async def test_user_step_then_area_selection(hass, issued_active) -> None:
+async def test_user_step_then_area_selection(
+    aioclient_mock, hass, issued_active
+) -> None:
     result = await _start_user_step(hass)
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_active)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
-        )
+    register_nswws(aioclient_mock, issued_active)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
+    )
 
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "areas"
@@ -125,15 +126,16 @@ async def test_user_step_then_area_selection(hass, issued_active) -> None:
     assert result["data"][CONF_AREAS] == ["West Midlands"]
 
 
-async def test_area_step_monitor_all_ignores_selection(hass, issued_active) -> None:
+async def test_area_step_monitor_all_ignores_selection(
+    aioclient_mock, hass, issued_active
+) -> None:
     result = await _start_user_step(hass)
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_active)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
-        )
+    register_nswws(aioclient_mock, issued_active)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
+    )
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -144,29 +146,27 @@ async def test_area_step_monitor_all_ignores_selection(hass, issued_active) -> N
     assert result["data"][CONF_AREAS] == [AREA_ALL]
 
 
-async def test_user_step_invalid_auth(hass) -> None:
+async def test_user_step_invalid_auth(aioclient_mock, hass) -> None:
     result = await _start_user_step(hass)
 
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=401)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "bad-key", CONF_BASE_URL: BASE_URL},
-        )
+    register_nswws_feed_error(aioclient_mock, status=401)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "bad-key", CONF_BASE_URL: BASE_URL},
+    )
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "invalid_auth"}
 
 
-async def test_user_step_cannot_connect(hass) -> None:
+async def test_user_step_cannot_connect(aioclient_mock, hass) -> None:
     result = await _start_user_step(hass)
 
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=500)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
-        )
+    register_nswws_feed_error(aioclient_mock, status=500)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "test-key", CONF_BASE_URL: BASE_URL},
+    )
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
@@ -188,107 +188,105 @@ async def test_user_step_unknown_error(hass) -> None:
     assert result["errors"] == {"base": "unknown"}
 
 
-async def test_duplicate_entry_aborts(hass, issued_empty) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await _start_user_step(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "dup-key", CONF_BASE_URL: BASE_URL},
-        )
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
-        )
+async def test_duplicate_entry_aborts(aioclient_mock, hass, issued_empty) -> None:
+    register_nswws(aioclient_mock, issued_empty)
+    result = await _start_user_step(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "dup-key", CONF_BASE_URL: BASE_URL},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await _start_user_step(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "dup-key", CONF_BASE_URL: BASE_URL},
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    result = await _start_user_step(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "dup-key", CONF_BASE_URL: BASE_URL},
+    )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
 
 
-async def test_options_flow_updates_scan_interval(hass, issued_empty) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await _start_user_step(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "opt-key", CONF_BASE_URL: BASE_URL},
-        )
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
-        )
+async def test_options_flow_updates_scan_interval(
+    aioclient_mock, hass, issued_empty
+) -> None:
+    register_nswws(aioclient_mock, issued_empty)
+    result = await _start_user_step(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "opt-key", CONF_BASE_URL: BASE_URL},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
+    )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        options_result = await hass.config_entries.options.async_init(entry.entry_id)
-        options_result = await hass.config_entries.options.async_configure(
-            options_result["flow_id"],
-            {
-                CONF_SCAN_INTERVAL_MINUTES: 15,
-                CONF_MONITOR_ALL: True,
-                CONF_AREAS: [],
-            },
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    options_result = await hass.config_entries.options.async_init(entry.entry_id)
+    options_result = await hass.config_entries.options.async_configure(
+        options_result["flow_id"],
+        {
+            CONF_SCAN_INTERVAL_MINUTES: 15,
+            CONF_MONITOR_ALL: True,
+            CONF_AREAS: [],
+        },
+    )
 
     assert options_result["type"] is FlowResultType.CREATE_ENTRY
     assert options_result["data"][CONF_SCAN_INTERVAL_MINUTES] == 15
 
 
-async def test_options_flow_interval_too_short(hass, issued_empty) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await _start_user_step(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "short-key", CONF_BASE_URL: BASE_URL},
-        )
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
-        )
+async def test_options_flow_interval_too_short(
+    aioclient_mock, hass, issued_empty
+) -> None:
+    register_nswws(aioclient_mock, issued_empty)
+    result = await _start_user_step(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "short-key", CONF_BASE_URL: BASE_URL},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
+    )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        options_result = await hass.config_entries.options.async_init(entry.entry_id)
-        options_result = await hass.config_entries.options.async_configure(
-            options_result["flow_id"],
-            {
-                CONF_SCAN_INTERVAL_MINUTES: 1,
-                CONF_MONITOR_ALL: True,
-                CONF_AREAS: [],
-            },
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    options_result = await hass.config_entries.options.async_init(entry.entry_id)
+    options_result = await hass.config_entries.options.async_configure(
+        options_result["flow_id"],
+        {
+            CONF_SCAN_INTERVAL_MINUTES: 1,
+            CONF_MONITOR_ALL: True,
+            CONF_AREAS: [],
+        },
+    )
 
     assert options_result["type"] is FlowResultType.FORM
     assert options_result["errors"] == {"base": "interval_too_short"}
 
 
-async def test_reauth_flow_success(hass, issued_empty, mock_config_entry) -> None:
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=401)
-        assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+async def test_reauth_flow_success(
+    aioclient_mock, hass, issued_empty, mock_config_entry
+) -> None:
+    register_nswws_feed_error(aioclient_mock, status=401)
+    assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     flows = hass.config_entries.flow.async_progress()
     reauth_flows = [f for f in flows if f["context"]["source"] == "reauth"]
     assert len(reauth_flows) == 1
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await hass.config_entries.flow.async_configure(
-            reauth_flows[0]["flow_id"],
-            {CONF_API_KEY: "new-key"},
-        )
-        await hass.async_block_till_done()
+    register_nswws(aioclient_mock, issued_empty)
+    result = await hass.config_entries.flow.async_configure(
+        reauth_flows[0]["flow_id"],
+        {CONF_API_KEY: "new-key"},
+    )
+    await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
@@ -296,12 +294,11 @@ async def test_reauth_flow_success(hass, issued_empty, mock_config_entry) -> Non
 
 
 async def test_reauth_flow_invalid_auth_shows_error(
-    hass, mock_config_entry
+    aioclient_mock, hass, mock_config_entry
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=401)
-        assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    register_nswws_feed_error(aioclient_mock, status=401)
+    assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     reauth_flows = [
         f
@@ -309,24 +306,22 @@ async def test_reauth_flow_invalid_auth_shows_error(
         if f["context"]["source"] == "reauth"
     ]
 
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=401)
-        result = await hass.config_entries.flow.async_configure(
-            reauth_flows[0]["flow_id"],
-            {CONF_API_KEY: "still-bad-key"},
-        )
+    register_nswws_feed_error(aioclient_mock, status=401)
+    result = await hass.config_entries.flow.async_configure(
+        reauth_flows[0]["flow_id"],
+        {CONF_API_KEY: "still-bad-key"},
+    )
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "invalid_auth"}
 
 
 async def test_reauth_flow_cannot_connect_shows_error(
-    hass, mock_config_entry
+    aioclient_mock, hass, mock_config_entry
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=401)
-        assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
-        await hass.async_block_till_done()
+    register_nswws_feed_error(aioclient_mock, status=401)
+    assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
 
     reauth_flows = [
         f
@@ -334,80 +329,79 @@ async def test_reauth_flow_cannot_connect_shows_error(
         if f["context"]["source"] == "reauth"
     ]
 
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=500)
-        result = await hass.config_entries.flow.async_configure(
-            reauth_flows[0]["flow_id"],
-            {CONF_API_KEY: "new-key"},
-        )
+    register_nswws_feed_error(aioclient_mock, status=500)
+    result = await hass.config_entries.flow.async_configure(
+        reauth_flows[0]["flow_id"],
+        {CONF_API_KEY: "new-key"},
+    )
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
 
 
 async def test_options_flow_fetch_failure_falls_back_to_empty_choices(
-    hass, issued_empty
+    aioclient_mock, hass, issued_empty
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await _start_user_step(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "fallback-key", CONF_BASE_URL: BASE_URL},
-        )
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    result = await _start_user_step(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "fallback-key", CONF_BASE_URL: BASE_URL},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
+    )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
 
-    with aioresponses() as mocked:
-        register_nswws_feed_error(mocked, status=500)
-        options_result = await hass.config_entries.options.async_init(entry.entry_id)
+    register_nswws_feed_error(aioclient_mock, status=500)
+    options_result = await hass.config_entries.options.async_init(entry.entry_id)
 
     assert options_result["type"] is FlowResultType.FORM
     assert options_result["step_id"] == "init"
     # Fixed regions are still offered when the live fetch fails.
     choices = _multi_select_choices(options_result["data_schema"], CONF_AREAS)
     assert set(NSWWS_REGIONS) <= set(choices)
+    # ...and the failed fetch really was attempted.
+    assert any(
+        str(url) == f"{BASE_URL}{FEED_PATH}"
+        for _, url, _, _ in aioclient_mock.mock_calls
+    )
 
 
 async def test_options_flow_saves_and_restores_home_location_checkbox(
-    hass, issued_empty
+    aioclient_mock, hass, issued_empty
 ) -> None:
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        result = await _start_user_step(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_API_KEY: "location-opt-key", CONF_BASE_URL: BASE_URL},
-        )
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    result = await _start_user_step(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_API_KEY: "location-opt-key", CONF_BASE_URL: BASE_URL},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_MONITOR_ALL: True, CONF_AREAS: []}
+    )
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        options_result = await hass.config_entries.options.async_init(entry.entry_id)
-        assert options_result["type"] is FlowResultType.FORM
-        options_result = await hass.config_entries.options.async_configure(
-            options_result["flow_id"],
-            {
-                CONF_SCAN_INTERVAL_MINUTES: 15,
-                CONF_MONITOR_ALL: True,
-                CONF_AREAS: [],
-                CONF_USE_HOME_LOCATION: True,
-            },
-        )
+    register_nswws(aioclient_mock, issued_empty)
+    options_result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert options_result["type"] is FlowResultType.FORM
+    options_result = await hass.config_entries.options.async_configure(
+        options_result["flow_id"],
+        {
+            CONF_SCAN_INTERVAL_MINUTES: 15,
+            CONF_MONITOR_ALL: True,
+            CONF_AREAS: [],
+            CONF_USE_HOME_LOCATION: True,
+        },
+    )
 
     assert options_result["type"] is FlowResultType.CREATE_ENTRY
     assert options_result["data"][CONF_USE_HOME_LOCATION] is True
     assert options_result["data"][CONF_AREAS] == [AREA_ALL]
 
-    with aioresponses() as mocked:
-        register_nswws(mocked, issued_empty)
-        reopened = await hass.config_entries.options.async_init(entry.entry_id)
+    register_nswws(aioclient_mock, issued_empty)
+    reopened = await hass.config_entries.options.async_init(entry.entry_id)
     assert reopened["type"] is FlowResultType.FORM
     defaults = reopened["data_schema"]({})
     assert defaults[CONF_USE_HOME_LOCATION] is True

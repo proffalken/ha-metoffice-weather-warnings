@@ -1,4 +1,4 @@
-"""Shared aioresponses helpers for mocking the NSWWS feed -> issued flow.
+"""Shared aioclient_mock helpers for mocking the NSWWS feed -> issued flow.
 
 Confirmed against a live call: `/objects/feed` returns an Atom feed whose
 rel="related" link points at the actual GeoJSON snapshot, under a URL
@@ -45,22 +45,29 @@ def feed_xml_without_related_link(base_url: str = NSWWS_BASE_URL) -> str:
     )
 
 
-def register_nswws(mocked, payload: dict, base_url: str = NSWWS_BASE_URL) -> None:
-    """Register mocks for a successful feed -> issued-snapshot round trip."""
+def register_nswws(
+    aioclient_mock, payload: dict, base_url: str = NSWWS_BASE_URL
+) -> None:
+    """Register mocks for a successful feed -> issued-snapshot round trip.
+
+    Clears earlier mocks first: aioclient_mock keeps responses registered for
+    the whole test, so a stale error response would otherwise keep matching."""
+    aioclient_mock.clear_requests()
     snapshot_url = issued_snapshot_url(base_url)
-    mocked.get(
+    aioclient_mock.get(
         f"{base_url}{FEED_PATH}",
-        body=feed_xml(base_url, snapshot_url),
-        content_type="application/atom+xml",
+        text=feed_xml(base_url, snapshot_url),
+        headers={"Content-Type": "application/atom+xml"},
         status=200,
     )
-    mocked.get(snapshot_url, payload=payload, status=200)
+    aioclient_mock.get(snapshot_url, json=payload, status=200)
 
 
 def register_nswws_feed_error(
-    mocked, status: int, base_url: str = NSWWS_BASE_URL
+    aioclient_mock, status: int, base_url: str = NSWWS_BASE_URL
 ) -> None:
     """Register a feed-level failure. Auth is enforced on every call, so an
     auth/connection error surfaces here before the issued snapshot is ever
     requested."""
-    mocked.get(f"{base_url}{FEED_PATH}", status=status)
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{base_url}{FEED_PATH}", status=status)

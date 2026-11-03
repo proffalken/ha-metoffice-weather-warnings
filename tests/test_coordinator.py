@@ -47,9 +47,7 @@ async def test_update_filters_by_area(hass, issued_active) -> None:
 async def test_update_no_matches_gives_none_level(hass, issued_active) -> None:
     client = AsyncMock()
     client.async_get_active_warnings.return_value = warnings_from_geojson(issued_active)
-    coordinator = MetOfficeWarningsCoordinator(
-        hass, client=client, areas=["Scotland"]
-    )
+    coordinator = MetOfficeWarningsCoordinator(hass, client=client, areas=["Scotland"])
 
     data = await coordinator._async_update_data()
 
