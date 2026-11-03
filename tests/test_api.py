@@ -46,12 +46,13 @@ async def test_sends_api_key_header_on_both_requests(
     register_nswws(aioclient_mock, issued_empty)
     await client.async_get_active_warnings()
 
-    calls = {
-        (method, str(url)): headers
-        for method, url, _, headers in aioclient_mock.mock_calls
-    }
-    assert calls[("GET", client._url(FEED_PATH))][API_KEY_HEADER] == "test-key"
-    assert calls[("GET", issued_snapshot_url())][API_KEY_HEADER] == "test-key"
+    headers_by_url: dict[str, list] = {}
+    for method, url, _, headers in aioclient_mock.mock_calls:
+        if method == "GET":
+            headers_by_url.setdefault(str(url), []).append(headers)
+    for url in (client._url(FEED_PATH), issued_snapshot_url()):
+        assert headers_by_url[url]
+        assert all(h[API_KEY_HEADER] == "test-key" for h in headers_by_url[url])
 
 
 async def test_auth_error_on_feed_raises(aioclient_mock, client) -> None:

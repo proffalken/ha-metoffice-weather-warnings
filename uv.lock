@@ -1538,7 +1538,7 @@ wheels = [
 
 [[package]]
 name = "metoffice-warnings"
-version = "0.3.0"
+version = "0.4.1"
 source = { virtual = "." }
 
 [package.dev-dependencies]
@@ -1557,7 +1557,7 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "pytest-homeassistant-custom-component", specifier = ">=0.13.0" },
-    { name = "ruff", specifier = ">=0.8" },
+    { name = "ruff", specifier = ">=0.14" },
     { name = "syrupy", specifier = ">=4.7" },
 ]
 

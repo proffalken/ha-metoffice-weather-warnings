@@ -28,6 +28,7 @@ async def test_options_update_triggers_reload(
     await hass.async_block_till_done()
 
     assert mock_config_entry.state is ConfigEntryState.LOADED
+    coordinator_before = mock_config_entry.runtime_data
 
     register_nswws(aioclient_mock, issued_empty)
     hass.config_entries.async_update_entry(
@@ -36,6 +37,8 @@ async def test_options_update_triggers_reload(
     await hass.async_block_till_done()
 
     assert mock_config_entry.state is ConfigEntryState.LOADED
+    # A reload builds a fresh coordinator.
+    assert mock_config_entry.runtime_data is not coordinator_before
 
 
 async def test_setup_entry_auth_failure_starts_reauth(

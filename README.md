@@ -33,10 +33,10 @@ If something still doesn't parse as expected, please
 [open an issue](https://github.com/Proffalken/ha-metoffice-weather-warnings/issues) with a
 redacted sample response.
 
-**Known gap:** HACS's brand-assets check currently fails because this integration hasn't
-been submitted to [home-assistant/brands](https://github.com/home-assistant/brands) yet
-(needs an icon/logo). That's expected for a new integration and doesn't block installing
-it as a HACS custom repository — only default-store listing.
+The integration ships its own icon in `custom_components/metoffice_warnings/brand/`
+(supported by Home Assistant 2026.3 and later). The icon is original artwork. Its
+SVG source is in `assets/icon.svg` and it's released under this repository's licence.
+It is not affiliated with or endorsed by the Met Office.
 
 ## What you get
 
@@ -44,9 +44,9 @@ Each config entry (one NSWWS API key/area filter) creates one device with six
 entities:
 
 - `sensor.<name>_warning_level` — the highest-severity active warning matching your
-  area filter: `none` / `yellow` / `amber` / `red`. Attributes include the full list
-  of active warnings (headline, weather type, what to expect, what to do, valid
-  from/to, likelihood, impact, affected areas) — use this one for templating.
+  selected area or Home location: `none` / `yellow` / `amber` / `red`. Attributes include the full list
+  of active warnings (headline, weather type, what to expect, what to do, further
+  details, valid from/to, likelihood, impact, affected areas) — use this one for templating.
 - `binary_sensor.<name>_warning_active` — on when any warning matches your filter, for
   simple automation triggers. Attributes summarise the most severe active warning.
 - `sensor.<name>_warning_headline` / `_warning_areas` / `_warning_valid_from` /
@@ -59,13 +59,17 @@ entities:
 
 ## Requirements
 
-You need your own NSWWS Public API access — this is a *different* product from the
-Met Office DataHub weather-forecast API and requires a separate signup:
+You need your own NSWWS API key. The warnings API is now published on the
+[Met Office Weather DataHub](https://datahub.metoffice.gov.uk/docs/g/category/warnings/overview):
 
-1. Fill in the request form linked from the
-   [NSWWS Public API docs](https://metoffice.github.io/nswws-public-api/).
-2. Once approved, you'll receive an API key (the base URL is the same fixed public
-   host for everyone — see the Status section above).
+1. Sign up for (or log in to) Weather DataHub and subscribe to the **Warnings**
+   product.
+2. Copy the API key from your subscription — keys issued this way work with this
+   integration. Keys obtained through the older request form linked from the
+   [NSWWS Public API docs](https://metoffice.github.io/nswws-public-api/) also work.
+
+The base URL is the same fixed public host for everyone (see the Status section
+above), so you only need the key.
 
 ## Installation
 
@@ -85,20 +89,55 @@ Settings → Devices & Services → Add Integration → **Met Office Warnings**.
 
 1. Enter your NSWWS API key (the base URL is pre-filled — only change it if Met
    Office tells you to).
-2. If any warnings are currently active anywhere in the UK, you'll be offered a list
-   of regions to filter to — leave **Monitor all UK regions** checked to track
-   everything nationwide, or pick specific regions. If nothing is active right now,
-   setup completes immediately monitoring the whole UK; refine the area filter later
-   from the integration's **Configure** options.
+2. Choose the regions to monitor — leave **Monitor all UK regions** checked to track
+   everything nationwide, or pick one or more of the 16 Met Office warning regions.
+   All regions are always listed, whether or not they have a warning right now.
 
-Poll interval (default 10 minutes, minimum 5) and the area filter can be changed
-afterwards via the integration's options.
+Poll interval (default 10 minutes, minimum 5), region selection, and **Use Home
+location** can be changed afterwards via the integration's **Configure** options.
+
+### Optional Home location filtering
+
+Enable **Use Home location** to select warnings whose published GeoJSON polygons
+cover the latitude and longitude configured in Home Assistant (Settings → System →
+General). This option is **off by default**, preserving the existing region-based
+behaviour. It is useful near regional or warning boundaries, where selecting a broad
+region may include warnings that do not actually cover your home.
+
+- With the option **off**, warnings match the selected regions as before.
+- With it **on**, warnings with usable Polygon or MultiPolygon geometry are
+  included only when the Home location is inside or on the warning boundary.
+  Polygon holes are respected.
+- If an individual warning has missing or unusable geometry, that warning falls
+  back to the selected region filter rather than disappearing silently.
+- If Home Assistant's Home coordinates are invalid or unavailable, filtering
+  falls back to the selected regions for all warnings.
+
+The warning-level sensor exposes a `filter_method` attribute: `region`,
+`polygon`, `polygon_with_region_fallback`, or `region_fallback`. The existing
+`warnings` attribute contains only matched warnings; full polygon coordinates
+are deliberately **not** published as entity attributes.
+
+### Downloading diagnostics
+
+For troubleshooting, open **Settings → Devices & Services → Met Office Warnings**,
+then the integration's three-dot menu → **Download diagnostics**. The downloaded
+JSON includes the latest fetched warning polygons, **including excluded warnings**,
+and the `included`, `region_match`, and `polygon_match` decisions for each. This
+allows boundary issues to be investigated without adding large geometries to
+Home Assistant's recorder.
+
+The API key is redacted and exact Home coordinates are not included. The
+export can still contain detailed weather-warning geometry and configuration
+information, so review it before sharing publicly.
 
 ## How it works
 
 Each poll fetches the NSWWS `/objects/feed` Atom feed, follows its `rel="related"`
 link to discover the current warnings snapshot URL, then fetches that GeoJSON
-`FeatureCollection` — which already excludes expired/cancelled warnings. It does
+`FeatureCollection` — which already excludes expired/cancelled warnings.
+Location filtering is applied to that snapshot locally; it does not require
+an additional Met Office API request. It does
 **not** yet consume the feed's individual `<entry>` change events (issued/updated/
 cancelled) for faster, event-driven updates — that would mean tracking a feed cursor
 across restarts, which is a reasonable follow-up now that the snapshot-polling

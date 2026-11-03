@@ -41,7 +41,11 @@
         "data": {
           "scan_interval_minutes": "Poll interval (minutes)",
           "monitor_all": "Monitor all UK regions",
-          "areas": "Regions to monitor"
+          "areas": "Regions to monitor",
+          "use_home_location": "Use Home Assistant location for more accurate weather warnings"
+        },
+        "data_description": {
+          "use_home_location": "Uses your Home Assistant coordinates to identify warnings affecting your home rather than the wider selected regions. Incorrect coordinates may cause warnings to be missed or unrelated warnings to appear. If coordinates or warning boundaries are unavailable, the integration falls back to the selected regions."
         }
       }
     },

@@ -15,6 +15,7 @@ CONF_BASE_URL: Final = "base_url"
 DEFAULT_BASE_URL: Final = "https://data.hub.api.metoffice.gov.uk/nswws/v1.1"
 CONF_AREAS: Final = "areas"
 CONF_MONITOR_ALL: Final = "monitor_all"
+CONF_USE_HOME_LOCATION: Final = "use_home_location"
 CONF_SCAN_INTERVAL_MINUTES: Final = "scan_interval_minutes"
 
 DEFAULT_SCAN_INTERVAL_MINUTES: Final = 10
@@ -31,6 +32,28 @@ FEED_PATH: Final = "/objects/feed"
 API_KEY_HEADER: Final = "apikey"
 
 AREA_ALL: Final = "all"
+
+# The 16 NSWWS warning regions, spelt as the API's `affectedAreas[].regionName`
+# and the Met Office warnings pages use them. Offered in the region picker so it
+# doesn't depend on which regions happen to have live warnings.
+NSWWS_REGIONS: Final = (
+    "Orkney & Shetland",
+    "Highlands & Eilean Siar",
+    "Grampian",
+    "Central, Tayside & Fife",
+    "Strathclyde",
+    "SW Scotland, Lothian Borders",
+    "Northern Ireland",
+    "Wales",
+    "North West England",
+    "North East England",
+    "Yorkshire & Humber",
+    "West Midlands",
+    "East Midlands",
+    "East of England",
+    "South West England",
+    "London & South East England",
+)
 
 WARNING_LEVEL_NONE: Final = "none"
 WARNING_LEVEL_YELLOW: Final = "yellow"

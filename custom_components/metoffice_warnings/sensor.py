@@ -54,6 +54,7 @@ class MetOfficeWarningLevelSensor(MetOfficeWarningsEntity, SensorEntity):
         warnings = self._data.warnings
         return {
             "warning_count": len(warnings),
+            "filter_method": self._data.filter_method,
             "warnings": [w.as_dict() for w in warnings],
         }
 

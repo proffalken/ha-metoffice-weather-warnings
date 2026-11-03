@@ -40,6 +40,7 @@ class Warning:
     valid_to: datetime
     issued: datetime
     modified: datetime
+    geometry: dict | None = None
 
     def as_dict(self) -> dict:
         """Return a JSON-serialisable representation for entity attributes."""
@@ -50,6 +51,7 @@ class Warning:
             "headline": self.headline,
             "what_to_expect": self.what_to_expect,
             "what_should_i_do": self.what_should_i_do,
+            "further_details": self.further_details,
             "areas": self.region_names,
             "valid_from": self.valid_from.isoformat(),
             "valid_to": self.valid_to.isoformat(),
@@ -86,6 +88,7 @@ def _warning_from_feature(feature: dict) -> Warning:
         valid_to=_parse_datetime(props["validToDate"]),
         issued=_parse_datetime(props["issuedDate"]),
         modified=_parse_datetime(props["modifiedDate"]),
+        geometry=feature.get("geometry"),
     )
 
 

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Original artwork: rounded warning triangle with a storm cloud and lightning bolt. -->
+  <path d="M256 52 L470 440 L42 440 Z" fill="#263238" stroke="#263238" stroke-width="64" stroke-linejoin="round"/>
+  <path d="M256 52 L470 440 L42 440 Z" fill="#F9B233" stroke="#F9B233" stroke-width="28" stroke-linejoin="round"/>
+  <g fill="#263238">
+    <circle cx="206" cy="282" r="44"/>
+    <circle cx="260" cy="248" r="60"/>
+    <circle cx="314" cy="286" r="42"/>
+    <rect x="162" y="282" width="194" height="46" rx="23"/>
+  </g>
+  <path d="M272 300 L226 372 L258 372 L238 424 L302 346 L268 346 L290 300 Z"
+        fill="#FFFFFF" stroke="#263238" stroke-width="10" stroke-linejoin="round"/>
+</svg>

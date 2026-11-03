@@ -17,6 +17,7 @@ from .const import (
     WARNING_LEVEL_NONE,
     WARNING_LEVELS,
 )
+from .geometry import geometry_covers, valid_coordinates
 from .models import Warning
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ class WarningsData:
 
     warnings: list[Warning]
     level: str
+    filter_method: str = "region"
 
 
 class MetOfficeWarningsCoordinator(DataUpdateCoordinator[WarningsData]):
@@ -64,6 +66,7 @@ class MetOfficeWarningsCoordinator(DataUpdateCoordinator[WarningsData]):
         client: NSWWSApiClient,
         areas: list[str],
         update_interval=DEFAULT_SCAN_INTERVAL,
+        use_home_location: bool = False,
     ) -> None:
         super().__init__(
             hass,
@@ -73,6 +76,8 @@ class MetOfficeWarningsCoordinator(DataUpdateCoordinator[WarningsData]):
         )
         self._client = client
         self._areas = areas
+        self._use_home_location = use_home_location
+        self.all_warnings: list[Warning] = []
 
     async def _async_update_data(self) -> WarningsData:
         try:
@@ -84,5 +89,26 @@ class MetOfficeWarningsCoordinator(DataUpdateCoordinator[WarningsData]):
         except NSWWSConnectionError as err:
             raise UpdateFailed(f"Error fetching NSWWS warnings: {err}") from err
 
-        matched = [w for w in all_warnings if _matches_area(w, self._areas)]
-        return WarningsData(warnings=matched, level=highest_level(matched))
+        self.all_warnings = all_warnings
+
+        if self._use_home_location and valid_coordinates(
+            self.hass.config.latitude, self.hass.config.longitude
+        ):
+            latitude = self.hass.config.latitude
+            longitude = self.hass.config.longitude
+            matched = []
+            fallback_used = False
+            for warning in all_warnings:
+                covered = geometry_covers(warning.geometry, latitude, longitude)
+                if covered is True:
+                    matched.append(warning)
+                elif covered is None and _matches_area(warning, self._areas):
+                    matched.append(warning)
+                    fallback_used = True
+            method = "polygon_with_region_fallback" if fallback_used else "polygon"
+        else:
+            matched = [w for w in all_warnings if _matches_area(w, self._areas)]
+            method = "region_fallback" if self._use_home_location else "region"
+        return WarningsData(
+            warnings=matched, level=highest_level(matched), filter_method=method
+        )
